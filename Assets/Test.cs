@@ -5,8 +5,8 @@ public class Test : MonoBehaviour
 {
     SenselDevice _device;
     SenselSensorInfo _sensorInfo;
-    Texture2D _texture;
-    Color32 [] _pixels;
+    ComputeBuffer _buffer;
+    MaterialPropertyBlock _materialSheet;
 
     void OnEnable()
     {
@@ -27,12 +27,22 @@ public class Test : MonoBehaviour
 
     void Update()
     {
-        if (_texture == null)
-        {
-            _texture = new Texture2D(_sensorInfo.num_cols, _sensorInfo.num_rows);
-            GetComponent<Renderer>().material.mainTexture = _texture;
+        if (_device == null) return; // No device is available.
 
-            _pixels = new Color32 [_sensorInfo.num_cols * _sensorInfo.num_rows];
+        if (_buffer == null)
+        {
+            _buffer = new ComputeBuffer(
+                _sensorInfo.num_cols * _sensorInfo.num_rows, sizeof(float)
+            );
+
+            if (_materialSheet == null) _materialSheet = new MaterialPropertyBlock();
+
+            var renderer = GetComponent<Renderer>();
+            renderer.GetPropertyBlock(_materialSheet);
+            _materialSheet.SetBuffer("_ForceBuffer", _buffer);
+            _materialSheet.SetVector("_BufferDims",
+                new Vector2(_sensorInfo.num_cols, _sensorInfo.num_rows));
+            renderer.SetPropertyBlock(_materialSheet);
         }
 
         _device.ReadSensor();
@@ -43,25 +53,13 @@ public class Test : MonoBehaviour
         for (var i = 0; i < count - 1; i++) _device.GetFrame();
         var frame = _device.GetFrame();
 
-        var offs = 0;
-        for (var y = 0; y < _sensorInfo.num_rows; y++)
-        {
-            for (var x = 0; x < _sensorInfo.num_cols; x++)
-            {
-                var c_in = (float)_pixels[offs].r;
-                c_in += frame.force_array[offs] * 2 - Time.deltaTime * 200;
-                var c = (System.Byte)Mathf.Clamp(c_in, 0, 255);
-                _pixels[offs++] = new Color32(c, c, c, 0xff);
-            }
-        }
-
-        _texture.SetPixels32(_pixels);
-        _texture.Apply();
+        _buffer.SetData(frame.force_array);
     }
 
     void OnDisable()
     {
         if (_device != null) _device.StopScanning();
+        if (_buffer != null) _buffer.Dispose();
     }
 
     void OnDestroy()
@@ -71,7 +69,5 @@ public class Test : MonoBehaviour
             _device.Close();
             _device = null;
         }
-
-        if (_texture != null) Destroy(_texture);
     }
 }
