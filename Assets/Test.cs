@@ -48,10 +48,6 @@ public class Test : MonoBehaviour
 
         _device.ReadSensor();
 
-        var count = _device.GetNumAvailableFrames();
-        if (count == 0) return;
-
-        for (var i = 0; i < count - 1; i++) _device.GetFrame();
         var frame = _device.GetFrame();
 
         _buffer.SetData(frame.force_array);
