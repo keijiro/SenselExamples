@@ -25,6 +25,7 @@ namespace SenselTest
         Material _filter;
         Texture2D _rawInput;
         RenderTexture _filteredInput;
+        RenderTexture _totalInput;
         RenderTexture[] _pyramid = new RenderTexture[kLevelCount];
 
         #endregion
@@ -43,6 +44,10 @@ namespace SenselTest
 
         public Texture FilteredInputTexture {
             get { return _filteredInput; }
+        }
+
+        public Texture TotalInputTexture {
+            get { return _totalInput; }
         }
 
         #endregion
@@ -79,6 +84,8 @@ namespace SenselTest
                 _pyramid[i] = new RenderTexture(tw, th, 0, RenderTextureFormat.RHalf);
                 _pyramid[i].wrapMode = TextureWrapMode.Clamp;
             }
+
+            _totalInput = new RenderTexture(1, 1, 0, RenderTextureFormat.RHalf);
         }
 
         public void Dispose()
@@ -134,6 +141,9 @@ namespace SenselTest
                 if (_filter != null)
                     UnityEngine.Object.Destroy(_filter);
 
+                if (_totalInput != null)
+                    UnityEngine.Object.Destroy(_totalInput);
+
                 for (var i = 0; i < kLevelCount; i++)
                     if (_pyramid[i] != null) UnityEngine.Object.Destroy(_pyramid[i]);
             }
@@ -160,6 +170,8 @@ namespace SenselTest
             _filter.SetFloat("_Alpha", 1.0f / (1 + kLevelCount));
 
             Graphics.Blit(_pyramid[0], source, _filter, 2);
+
+            Graphics.Blit(_pyramid[kLevelCount - 1], _totalInput, _filter, 3);
         }
 
         #endregion

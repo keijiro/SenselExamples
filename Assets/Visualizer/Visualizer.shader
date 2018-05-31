@@ -15,6 +15,7 @@
     float4 _MainTex_TexelSize;
 
     sampler2D _InputTex;
+    Buffer<float> _StateBuffer;
 
     half3 Palette(half p)
     {
@@ -25,9 +26,9 @@
 
     half4 frag_img(v2f_img input) : SV_Target
     {
-        float2 uv_n = input.uv * 4;
-        float t_n = _Time.y * 0.7;
-        float amp_n = 0.02;
+        float2 uv_n = input.uv * (4 + 4 * _StateBuffer[1]);
+        float t_n = _StateBuffer[0];
+        float amp_n = 0.005 + 0.2 * _StateBuffer[1];
 
         float2 uv = input.uv;
         uv.x += snoise(float3(uv_n, t_n - 11)) * amp_n;

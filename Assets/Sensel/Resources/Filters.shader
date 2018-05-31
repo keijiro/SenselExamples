@@ -49,6 +49,14 @@
         return half4(tex2D(_MainTex, input.uv).r, 0, 0, _Alpha);
     }
 
+    half4 frag_total(v2f_img input) : SV_Target
+    {
+        return (
+            tex2D(_MainTex, float2(0.25, 0.5)).r +
+            tex2D(_MainTex, float2(0.75, 0.5)).r
+        ) / 2;
+    }
+
     ENDCG
 
     SubShader
@@ -74,6 +82,13 @@
             CGPROGRAM
             #pragma vertex vert_img
             #pragma fragment frag_upsample
+            ENDCG
+        }
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert_img
+            #pragma fragment frag_total
             ENDCG
         }
     }
