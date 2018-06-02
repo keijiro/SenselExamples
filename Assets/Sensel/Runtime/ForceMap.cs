@@ -1,10 +1,9 @@
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
-using Sensel;
 
-namespace SenselTest
+namespace Klak.Sensel
 {
-    sealed class ForceMap : System.IDisposable
+    public sealed class ForceMap : System.IDisposable
     {
         #region Compile time constants
 
@@ -21,7 +20,6 @@ namespace SenselTest
 
         #region Private variables
 
-        SenselDevice _device;
         Material _filter;
         Texture2D _rawInput;
         RenderTexture _filteredInput;
@@ -31,12 +29,6 @@ namespace SenselTest
         #endregion
 
         #region Public properties
-
-        public static bool IsAvailable {
-            get {
-                return SenselDevice.GetDeviceList().num_devices > 0;
-            }
-        }
 
         public Texture RawInputTexture {
             get { return _rawInput; }
@@ -56,19 +48,10 @@ namespace SenselTest
 
         public ForceMap()
         {
-            var deviceList = SenselDevice.GetDeviceList();
-            if (deviceList.num_devices == 0)
-                throw new System.IO.IOException("Sensel device not found.");
-
-            _device = new SenselDevice();
-            _device.OpenDeviceByID(deviceList.devices[0].idx);
-            _device.SetFrameContent(SenselDevice.FRAME_CONTENT_PRESSURE_MASK);
-
             _filter = new Material(Shader.Find("Hidden/Sensel/Filters"));
 
-            var info = _device.GetSensorInfo();
-
-            _rawInput = new Texture2D(info.num_cols, info.num_rows, TextureFormat.RFloat, false);
+            var dims = SenselMaster.SensorResolution;
+            _rawInput = new Texture2D(dims.x, dims.y, TextureFormat.RFloat, false);
             _rawInput.wrapMode = TextureWrapMode.Clamp;
 
             _filteredInput = new RenderTexture(kMapWidth, kMapHeight, 0, RenderTextureFormat.RHalf);
@@ -94,25 +77,11 @@ namespace SenselTest
             System.GC.SuppressFinalize(this);
         }
 
-        public void StartScanning()
+        public void Update()
         {
-            _device.StartScanning();
-        }
+            SenselMaster.Update();
 
-        public void StopScanning()
-        {
-            _device.StopScanning();
-        }
-
-        public unsafe void Update()
-        {
-            _device.ReadSensor();
-
-            var frame = _device.GetFrame();
-            var pBuffer = UnsafeUtility.AddressOf(ref frame.force_array[0]);
-            var bufferSize = frame.force_array.Length * sizeof(float);
-
-            _rawInput.LoadRawTextureData((System.IntPtr)pBuffer, bufferSize);
+            SenselMaster.LoadForceIntoTexture(_rawInput);
             _rawInput.Apply();
 
             Graphics.Blit(_rawInput, _filteredInput, _filter, 0);
@@ -146,12 +115,6 @@ namespace SenselTest
 
                 for (var i = 0; i < kLevelCount; i++)
                     if (_pyramid[i] != null) UnityEngine.Object.Destroy(_pyramid[i]);
-            }
-
-            if (_device != null)
-            {
-                _device.Close();
-                _device = null;
             }
         }
 

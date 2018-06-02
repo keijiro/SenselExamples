@@ -1,0 +1,10 @@
+{
+    "name": "jp.keijiro.klak.Sensel",
+    "references": [
+        "sensel.sensel-api"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true
+}
