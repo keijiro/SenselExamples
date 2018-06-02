@@ -4,8 +4,10 @@ using Sensel;
 
 namespace Klak.Sensel
 {
-    // Sensel thread class manages the lifecycle of the device and thread
-    // objects.
+    //
+    // Sensel thread class manages the lifecycle of the device object and the
+    // receiver thread.
+    //
     sealed internal class SenselThread : System.IDisposable
     {
         #region Private variables
