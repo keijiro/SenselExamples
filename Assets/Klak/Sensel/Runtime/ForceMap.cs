@@ -3,6 +3,10 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace Klak.Sensel
 {
+    //
+    // ForceMap visualizes force inputs on a Sensel device surface. It applies
+    // a low pass filter to give expressiveness to visual inputs.
+    //
     public sealed class ForceMap : System.IDisposable
     {
         #region Compile time constants
@@ -50,13 +54,16 @@ namespace Klak.Sensel
         {
             _filter = new Material(Shader.Find("Hidden/Sensel/Filters"));
 
-            var dims = SenselMaster.SensorResolution;
-            _rawInput = new Texture2D(dims.x, dims.y, TextureFormat.RFloat, false);
+            // Raw input texture
+            var reso = SenselMaster.SensorResolution;
+            _rawInput = new Texture2D(reso.x, reso.y, TextureFormat.RFloat, false);
             _rawInput.wrapMode = TextureWrapMode.Clamp;
 
+            // Filtered input texture
             _filteredInput = new RenderTexture(kMapWidth, kMapHeight, 0, RenderTextureFormat.RHalf);
             _filteredInput.wrapMode = TextureWrapMode.Clamp;
 
+            // Image pyramid
             var tw = kMapWidth;
             var th = kMapHeight;
 
@@ -68,6 +75,7 @@ namespace Klak.Sensel
                 _pyramid[i].wrapMode = TextureWrapMode.Clamp;
             }
 
+            // Single pixel texture used to store the total of input force
             _totalInput = new RenderTexture(1, 1, 0, RenderTextureFormat.RHalf);
         }
 
@@ -81,10 +89,23 @@ namespace Klak.Sensel
         {
             SenselMaster.Update();
 
-            SenselMaster.LoadForceIntoTexture(_rawInput);
-            _rawInput.Apply();
+            // Transfer the force array to the raw input texture.
+            unsafe {
+                var input = SenselMaster.ForceArray;
+                if (input.IsCreated)
+                {
+                    _rawInput.LoadRawTextureData(
+                        (System.IntPtr)input.GetUnsafePtr(),
+                        sizeof(float) * input.Length
+                    );
+                    _rawInput.Apply();
+                }
+            }
 
+            // Apply the prefilter (vertical flip).
             Graphics.Blit(_rawInput, _filteredInput, _filter, 0);
+
+            // Apply the gaussian blur filter.
             ApplyBlurFilter(_filteredInput);
         }
 
@@ -120,20 +141,21 @@ namespace Klak.Sensel
 
         void ApplyBlurFilter(RenderTexture source)
         {
+            // Downsampling chain
             Graphics.Blit(source, _pyramid[0], _filter, 1);
-
             for (var i = 0; i < kLevelCount - 1; i++)
                 Graphics.Blit(_pyramid[i], _pyramid[i + 1], _filter, 1);
 
+            // Upsampling chain
             _filter.SetFloat("_Alpha", 1);
-
             for (var i = kLevelCount - 1; i > 0; i--)
                 Graphics.Blit(_pyramid[i], _pyramid[i - 1], _filter, 2);
 
+            // Final upsampling and normalization
             _filter.SetFloat("_Alpha", 1.0f / (1 + kLevelCount));
-
             Graphics.Blit(_pyramid[0], source, _filter, 2);
 
+            // Calculate the total force from the lowest layer.
             Graphics.Blit(_pyramid[kLevelCount - 1], _totalInput, _filter, 3);
         }
 
