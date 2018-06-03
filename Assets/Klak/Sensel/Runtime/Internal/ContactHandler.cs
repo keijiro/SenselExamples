@@ -19,9 +19,9 @@ namespace Klak.Sensel
 
         #region Query methods
 
-        public static Contact Find(int id)
+        public static Contact FindExcludeNewEntries(int id)
         {
-            for (var i = 0; i < _contactCount; i++)
+            for (var i = _newContactCount; i < _contactCount; i++)
                 if (_contactArray[i]._id == id) return _contactArray[i];
             return default(Contact);
         }

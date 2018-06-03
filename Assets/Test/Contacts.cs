@@ -3,97 +3,87 @@ using Klak.Sensel;
 
 public class Contacts : MonoBehaviour
 {
-    enum Mode { Single, Dual, Triple, Sixteen }
+    #region Editable property
 
-    [SerializeField] Mode _mode = Mode.Sixteen;
-    [SerializeField] GameObject _indicator;
+    [SerializeField] GameObject _indicatorTemplate;
 
-    GameObject [] _indicators;
+    #endregion
 
-    Contact _contact1;
-    Contact _contact2;
-    Contact _contact3;
+    #region Contacts and indicators
 
-    static void UpdateIndicator(GameObject indicator, Contact contact)
-    {
-        var transform = indicator.transform;
-        var pos = new Vector2(contact.X, contact.Y);
-        transform.position = (pos * 2 - Vector2.one) * new Vector2(1, 9.0f / 16);
-        transform.localScale = Vector3.one * (contact.Force * 2);
+    const int kMaxContacts = 16;
+    Contact [] _contacts = new Contact[kMaxContacts];
+    GameObject [] _indicators = new GameObject[kMaxContacts];
 
-        var color = Color.HSVToRGB((contact.ID * 0.1f) % 1.0f, 1, 1);
-        indicator.GetComponent<Renderer>().material.color = color;
-    }
+    #endregion
+
+    #region MonoBehaviour implementation
 
     void Start()
     {
-        _indicators = new GameObject[16];
-        _indicators[0] = _indicator;
-        for (var i = 1; i < _indicators.Length; i++)
-            _indicators[i] = Instantiate(_indicator);
+        _indicators[0] = _indicatorTemplate;
+        for (var i = 1; i < kMaxContacts; i++)
+            _indicators[i] = Instantiate(_indicatorTemplate);
     }
 
     void Update()
     {
-        if (_mode == Mode.Sixteen)
+        // Update the existing contacts.
+        for (var i = 0; i < kMaxContacts; i++)
         {
-            // Sixteen mode: Show all the contacts.
-            var contacts = Contact.All;
+            // If the contact is alive, try retrieving the latest state.
+            if (_contacts[i].IsValid)
+                _contacts[i] = Contact.GetLatest(_contacts[i].ID);
 
-            for (var i = 0; i < contacts.Length; i++)
-            {
-                _indicators[i].SetActive(true);
-                UpdateIndicator(_indicators[i], contacts[i]);
-            }
-
-            for (var i = contacts.Length; i < _indicators.Length; i++)
-                _indicators[i].SetActive(false);
+            UpdateIndicator(_indicators[i], _contacts[i]);
+            SwitchParticle(_indicators[i], _contacts[i].IsValid);
         }
-        else
+
+        // Add new entries to the contact array.
+        var newEntries = Contact.NewEntries;
+        for (var i1 = 0; i1 < newEntries.Length; i1++)
         {
-            if (_mode == Mode.Single)
+            // Find an unsed contact.
+            for (var i2 = 0; i2 < _contacts.Length; i2++)
             {
-                // Single mode: Trace only a single contact.
-                _contact1 = Contact.GetLatest(_contact1.ID);
-
-                if (!_contact1.IsValid) _contact1 = Contact.Head;
-
-                _contact2 = default(Contact);
-                _contact3 = default(Contact);
+                if (!_contacts[i2].IsValid)
+                {
+                    // Start using this one. Don't enable the particle system
+                    // at this point to avoid particle emission by jump.
+                    _contacts[i2] = newEntries[i1];
+                    UpdateIndicator(_indicators[i2], _contacts[i2]);
+                    break;
+                }
             }
-            else if (_mode == Mode.Dual)
-            {
-                // Dual mode: Trace two contacts.
-                _contact1 = Contact.GetLatest(_contact1.ID);
-                _contact2 = Contact.GetLatest(_contact2.ID);
-
-                if (!_contact1.IsValid) _contact1 = Contact.GetAnother(_contact2.ID);
-                if (!_contact2.IsValid) _contact2 = Contact.GetAnother(_contact1.ID);
-
-                _contact3 = default(Contact);
-            }
-            else // _mode == Mode.Triple
-            {
-                // Triple mode: Trace three contacts.
-                _contact1 = Contact.GetLatest(_contact1.ID);
-                _contact2 = Contact.GetLatest(_contact2.ID);
-                _contact3 = Contact.GetLatest(_contact3.ID);
-
-                if (!_contact1.IsValid) _contact1 = Contact.GetAnother(_contact2.ID, _contact3.ID);
-                if (!_contact2.IsValid) _contact2 = Contact.GetAnother(_contact1.ID, _contact3.ID);
-                if (!_contact3.IsValid) _contact3 = Contact.GetAnother(_contact1.ID, _contact2.ID);
-            }
-
-            if (_contact1.IsValid) UpdateIndicator(_indicators[0], _contact1);
-            if (_contact2.IsValid) UpdateIndicator(_indicators[1], _contact2);
-            if (_contact3.IsValid) UpdateIndicator(_indicators[2], _contact3);
-
-            _indicators[0].SetActive(_contact1.IsValid);
-            _indicators[1].SetActive(_contact2.IsValid);
-            _indicators[2].SetActive(_contact3.IsValid);
-
-            for (var i = 3; i < _indicators.Length; i++)
-                _indicators[i].SetActive(false);
         }
     }
+
+    #endregion
+
+    #region Private methods
+
+    static void UpdateIndicator(GameObject indicator, Contact contact)
+    {
+        var transform = indicator.transform;
+
+        if (contact.IsValid)
+        {
+            var pos = new Vector2(contact.X, contact.Y);
+            transform.position = (pos * 2 - Vector2.one) * new Vector2(1, 9.0f / 16);
+
+            var color = Color.HSVToRGB((contact.ID * 0.1f) % 1.0f, 1, 1);
+            indicator.GetComponent<Renderer>().material.color = color;
+            indicator.GetComponentInChildren<ParticleSystemRenderer>().material.color = color;
+        }
+
+        transform.localScale = Vector3.one * (contact.Force * 20);
+    }
+
+    static void SwitchParticle(GameObject indicator, bool enable)
+    {
+        var emission = indicator.GetComponentInChildren<ParticleSystem>().emission;
+        emission.enabled = enable;
+    }
+
+    #endregion
 }

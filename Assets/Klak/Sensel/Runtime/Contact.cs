@@ -33,7 +33,7 @@ namespace Klak.Sensel
         {
             if (id == 0) return default(Contact);
             ContactHandler.Update();
-            return ContactHandler.Find(id);
+            return ContactHandler.FindExcludeNewEntries(id);
         }
 
         // Get a contact point that has a different ID from the given ID(s).
