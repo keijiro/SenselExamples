@@ -295,6 +295,12 @@ namespace Sensel
             {
                 frame.n_contacts = frame_data.n_contacts;
                 frame.contacts.Clear();
+                // Use UnsafeUtility to avoid GC memory allocation.
+                unsafe {
+                    for (int i = 0; i < frame.n_contacts; i++)
+                        frame.contacts.Add(Unity.Collections.LowLevel.Unsafe.UnsafeUtility.ReadArrayElement<SenselContact>((void*)frame_data.contacts, i));
+                }
+                /*
                 long ptr_index = (frame_data.contacts).ToInt64();
                 for (int i = 0; i < frame.n_contacts; i++)
                 {
@@ -302,6 +308,7 @@ namespace Sensel
                     frame.contacts.Add((SenselContact)Marshal.PtrToStructure(c_ptr, typeof(SenselContact)));
                     ptr_index += Marshal.SizeOf(typeof(SenselContact));
                 }
+                */
             }
             if ((frame.content_bit_mask & FRAME_CONTENT_PRESSURE_MASK) > 0)
                 Marshal.Copy(frame_data.force_array, frame.force_array, 0, frame.force_array.Length);
