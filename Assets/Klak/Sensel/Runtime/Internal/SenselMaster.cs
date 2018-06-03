@@ -1,4 +1,3 @@
-using UnityEngine;
 using Unity.Collections;
 using Sensel;
 
@@ -19,11 +18,17 @@ namespace Klak.Sensel
             }
         }
 
-        public static Vector2Int SensorResolution {
+        public static SenselSensorInfo SensorInfo {
             get {
-                if (!CheckReady()) return Vector2Int.zero;
-                var info = _thread.SensorInfo;
-                return new Vector2Int(info.num_cols, info.num_rows);
+                if (!CheckReady()) return default(SenselSensorInfo);
+                return _thread.SensorInfo;
+            }
+        }
+
+        public static NativeSlice<SenselContact> Contacts {
+            get {
+                if (!CheckReady()) return default(NativeSlice<SenselContact>);
+                return _thread.Contacts;
             }
         }
 
@@ -34,16 +39,18 @@ namespace Klak.Sensel
             }
         }
 
-        public static void Update()
+        public static bool Update()
         {
-            if (!CheckReady()) return;
+            if (!CheckReady()) return false;
 
             // Check if it has been already called in the current frame.
-            var now = Time.frameCount;
-            if (now == _lastUpdate) return;
+            var now = UnityEngine.Time.frameCount;
+            if (now == _lastUpdate) return false;
 
             _thread.Update();
             _lastUpdate = now;
+
+            return true;
         }
 
         #endregion
@@ -81,13 +88,11 @@ namespace Klak.Sensel
         static bool CheckReady()
         {
             if (IsAvailable) return true;
-
             if (!_warned)
             {
-                Debug.LogWarning("Klak.Sensel: No Sensel device is found.");
+                UnityEngine.Debug.LogWarning("No Sensel device is found.");
                 _warned = true;
             }
-
             return false;
         }
 

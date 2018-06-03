@@ -19,6 +19,8 @@ namespace Klak.Sensel
 
         // Received frame data
         SenselFrame _frame;
+        NativeArray<SenselContact> _contacts;
+        int _contactCount;
         NativeArray<float> _forceArray;
 
         // Thread control
@@ -31,6 +33,11 @@ namespace Klak.Sensel
         #region Public properties
 
         public SenselSensorInfo SensorInfo { get { return _sensorInfo; } }
+
+        public NativeSlice<SenselContact> Contacts {
+            get { return new NativeSlice<SenselContact>(_contacts, 0, _contactCount); }
+        }
+
         public NativeArray<float> ForceArray { get { return _forceArray; } }
 
         #endregion
@@ -47,7 +54,10 @@ namespace Klak.Sensel
             // Open the found device.
             _device = new SenselDevice();
             _device.OpenDeviceByID(deviceList.devices[0].idx);
-            _device.SetFrameContent(SenselDevice.FRAME_CONTENT_PRESSURE_MASK);
+            _device.SetFrameContent(
+                SenselDevice.FRAME_CONTENT_CONTACTS_MASK |
+                SenselDevice.FRAME_CONTENT_PRESSURE_MASK
+            );
 
             _sensorInfo = _device.GetSensorInfo();
 
@@ -55,6 +65,11 @@ namespace Klak.Sensel
             _forceArray = new NativeArray<float>(
                 _sensorInfo.num_cols * _sensorInfo.num_rows,
                 Allocator.Persistent
+            );
+
+            // Allocate the contact array.
+            _contacts = new NativeArray<SenselContact>(
+                _sensorInfo.max_contacts, Allocator.Persistent
             );
 
             // Start the receiver thread.
@@ -67,17 +82,22 @@ namespace Klak.Sensel
         {
             if (_frame != null)
             {
-                // Copy the force array from the received frame. We expect that
-                // the previous read operation in the receiver thread has been
-                // already done so that we can safely copy the array. Although
-                // it may introduce visual tearing if the operation is not
-                // completed, it might be not a serious problem... or is it?
-                unsafe {
-                    UnsafeUtility.MemCpy(
-                        _forceArray.GetUnsafePtr(),
-                        UnsafeUtility.AddressOf(ref _frame.force_array[0]),
-                        sizeof(float) * _forceArray.Length
-                    );
+                // Pull the frame info from the receiver thread.
+                lock (_frame)
+                {
+                    // Contat points
+                    _contactCount = _frame.n_contacts;
+                    for (var i = 0; i < _contactCount; i++)
+                        _contacts[i] = _frame.contacts[i];
+
+                    // Force array
+                    unsafe {
+                        UnsafeUtility.MemCpy(
+                            _forceArray.GetUnsafePtr(),
+                            UnsafeUtility.AddressOf(ref _frame.force_array[0]),
+                            sizeof(float) * _forceArray.Length
+                        );
+                    }
                 }
             }
 
@@ -113,6 +133,7 @@ namespace Klak.Sensel
                     _thread = null;
                 }
 
+                if (_contacts.IsCreated) _contacts.Dispose();
                 if (_forceArray.IsCreated) _forceArray.Dispose();
             }
 
@@ -143,7 +164,10 @@ namespace Klak.Sensel
                 _device.ReadSensor();
 
                 // Retrieve the received frame data.
-                _frame = _device.GetFrame();
+                if (_frame == null)
+                    _frame = _device.GetFrame();
+                else
+                    lock (_frame) _device.GetFrame();
             }
 
             _device.StopScanning();

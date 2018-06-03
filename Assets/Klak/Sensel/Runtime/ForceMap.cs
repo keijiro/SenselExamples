@@ -55,8 +55,8 @@ namespace Klak.Sensel
             _filter = new Material(Shader.Find("Hidden/Sensel/Filters"));
 
             // Raw input texture
-            var reso = SenselMaster.SensorResolution;
-            _rawInput = new Texture2D(reso.x, reso.y, TextureFormat.RFloat, false);
+            var info = SenselMaster.SensorInfo;
+            _rawInput = new Texture2D(info.num_cols, info.num_rows, TextureFormat.RFloat, false);
             _rawInput.wrapMode = TextureWrapMode.Clamp;
 
             // Filtered input texture
