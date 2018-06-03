@@ -1,11 +1,11 @@
-﻿#pragma kernel Update
+﻿#pragma kernel BlotState
 
 float DeltaTime;
 Texture2D<float> TotalTexture;
 RWBuffer<float> StateBuffer;
 
 [numthreads(1, 1, 1)]
-void Update()
+void BlotState()
 {
     float total = TotalTexture[uint2(0, 0)];
     StateBuffer[1] = max(StateBuffer[1] * 0.95, total);

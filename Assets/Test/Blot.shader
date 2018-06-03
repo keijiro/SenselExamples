@@ -1,4 +1,4 @@
-﻿Shader "Hidden/Sensel/Visualizer"
+﻿Shader "Hidden/Sensel/Blot"
 {
     Properties
     {

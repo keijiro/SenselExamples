@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-public class Visualizer : MonoBehaviour
+public class Blot : MonoBehaviour
 {
     [SerializeField] bool _debug;
 
