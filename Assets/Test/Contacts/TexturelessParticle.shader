@@ -16,7 +16,7 @@ Shader "Shuriken Plus/Textureless Particle"
 
     CGINCLUDE
 
-    #include "Common.hlsl"
+    #include "UnityCG.cginc"
 
     half4 _Color;
     half _Shape;
