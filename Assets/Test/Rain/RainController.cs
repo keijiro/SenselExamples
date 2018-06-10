@@ -16,14 +16,14 @@ public class RainController : MonoBehaviour
     void Update()
     {
         if (_contact1.IsValid)
-            _contact1 = Contact.GetLatest(_contact1.ID);
+            _contact1 = TouchInput.GetContact(_contact1.ID);
         else
-            _contact1 = Contact.GetAnother(_contact2.ID);
+            _contact1 = TouchInput.GetContactExclude(_contact2.ID);
 
         if (_contact2.IsValid)
-            _contact2 = Contact.GetLatest(_contact2.ID);
+            _contact2 = TouchInput.GetContact(_contact2.ID);
         else
-            _contact2 = Contact.GetAnother(_contact1.ID);
+            _contact2 = TouchInput.GetContactExclude(_contact1.ID);
 
         var input = Vector2.Lerp(
             new Vector2(_contact1.X, _contact1.Y),

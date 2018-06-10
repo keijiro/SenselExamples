@@ -33,14 +33,14 @@ public class Contacts : MonoBehaviour
         {
             // If the contact is alive, try retrieving the latest state.
             if (_contacts[i].IsValid)
-                _contacts[i] = Contact.GetLatest(_contacts[i].ID);
+                _contacts[i] = TouchInput.GetContact(_contacts[i].ID);
 
             UpdateIndicator(_indicators[i], _contacts[i]);
             SwitchParticle(_indicators[i], _contacts[i].IsValid);
         }
 
         // Add new entries to the contact array.
-        var newEntries = Contact.NewEntries;
+        var newEntries = TouchInput.NewContacts;
         for (var i1 = 0; i1 < newEntries.Length; i1++)
         {
             // Find an unsed contact.

@@ -30,7 +30,7 @@ namespace Cortina
 
         void Update()
         {
-            var contacts = Contact.NewEntries;
+            var contacts = TouchInput.NewContacts;
             for (var i = 0; i < contacts.Length; i++)
             {
                 var contact = contacts[i];
