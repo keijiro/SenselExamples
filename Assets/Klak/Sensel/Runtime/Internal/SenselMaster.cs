@@ -39,18 +39,16 @@ namespace Klak.Sensel
             }
         }
 
-        public static bool Update()
+        public static void Update()
         {
-            if (!CheckReady()) return false;
+            if (!CheckReady()) return;
 
             // Check if it has been already called in the current frame.
             var now = UnityEngine.Time.frameCount;
-            if (now == _lastUpdate) return false;
+            if (now == _lastUpdate) return;
 
             _thread.Update();
             _lastUpdate = now;
-
-            return true;
         }
 
         #endregion

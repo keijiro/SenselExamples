@@ -104,6 +104,7 @@ namespace Klak.Sensel
         static NativeArray<Contact> _contactArray;
         static int _contactCount;
         static int _newContactCount;
+        static int _lastUpdate;
 
         static TouchInput()
         {
@@ -140,7 +141,11 @@ namespace Klak.Sensel
 
         static void Update()
         {
-            if (!SenselMaster.Update()) return;
+            SenselMaster.Update();
+
+            // Check if it has been already called in the current frame.
+            var now = UnityEngine.Time.frameCount;
+            if (now == _lastUpdate) return;
 
             var inputs = SenselMaster.Contacts;
 
@@ -159,6 +164,8 @@ namespace Klak.Sensel
                 if (inputs[i].state != (int)SenselContactState.CONTACT_START)
                     _contactArray[_contactCount++] = ConvertContact(ref inputs, i);
             }
+
+            _lastUpdate = now;
         }
 
         #endregion
