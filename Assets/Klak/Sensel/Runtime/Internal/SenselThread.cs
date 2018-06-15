@@ -155,7 +155,10 @@ namespace Klak.Sensel
             while (true)
             {
                 // Wait for a kick from the main thread.
-                _sync.WaitOne();
+                // We set one-second timeout to keep connection while pausing
+                // (It'll be automatically disconnected from the device when
+                // there is no access for a certain period).
+                _sync.WaitOne(1000);
 
                 if (_stop) break;
 
