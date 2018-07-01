@@ -7,8 +7,6 @@ public class Fluid : MonoBehaviour
 
     [SerializeField] Vector2Int _dimensions = new Vector2Int(512, 288);
     [SerializeField] float _viscosity = 0.01f;
-    [SerializeField] float _force = 300;
-    [SerializeField] float _exponent = 200;
 
     #endregion
 
@@ -75,6 +73,22 @@ public class Fluid : MonoBehaviour
     Vector4 [] _forceOrigins = new Vector4 [kMaxContacts];
     Vector4 [] _forceVectors = new Vector4 [kMaxContacts];
 
+    Vector2 ConvertCoord(Contact c)
+    {
+        return new Vector2((c.X - 0.5f) * 16 / 9, c.Y - 0.5f);
+    }
+
+    Vector4 MakeForceOrigin(Contact c)
+    {
+        var crd = ConvertCoord(c);
+        return new Vector3(crd.x, crd.y, c.Force);
+    }
+
+    Vector4 MakeForceVector(Contact c0, Contact c1)
+    {
+        return ConvertCoord(c1) - ConvertCoord(c0);
+    }
+
     #endregion
 
     #region MonoBehaviour implementation
@@ -94,8 +108,8 @@ public class Fluid : MonoBehaviour
         VFB.P1 = AllocateBuffer(1);
         VFB.P2 = AllocateBuffer(1);
 
-        _colorRT1 = AllocateBuffer(1, Screen.width, Screen.height);
-        _colorRT2 = AllocateBuffer(1, Screen.width, Screen.height);
+        _colorRT1 = AllocateBuffer(1, 1920, 1080);
+        _colorRT2 = AllocateBuffer(1, 1920, 1080);
     }
 
     void OnDestroy()
@@ -112,11 +126,6 @@ public class Fluid : MonoBehaviour
         Destroy(_colorRT2);
     }
 
-    Vector2 ConvertCoord(Contact c)
-    {
-        return new Vector2((c.X - 0.5f) * 16 / 9, c.Y - 0.5f);
-    }
-
     void Update()
     {
         var dt = Time.deltaTime;
@@ -128,14 +137,13 @@ public class Fluid : MonoBehaviour
             var updated = TouchInput.GetContact(_contacts[i].ID);
             if (_contacts[i].IsValid && updated.IsValid)
             {
-                var pos = ConvertCoord(updated);
-                _forceOrigins[i] = pos;
-                _forceVectors[i] = (pos - ConvertCoord(_contacts[i])) * _force;
+                _forceOrigins[i] = MakeForceOrigin(updated);
+                _forceVectors[i] = MakeForceVector(_contacts[i], updated);
             }
             else
             {
-                _forceOrigins[i] = Vector2.one * 1e+5f;
-                _forceVectors[i] = Vector2.zero;
+                _forceOrigins[i] = new Vector4(1e+5f, 0, 0, 0);
+                _forceVectors[i] = Vector3.zero;
             }
             _contacts[i] = updated;
         }
@@ -184,7 +192,6 @@ public class Fluid : MonoBehaviour
         // Add external force
         _compute.SetVectorArray("ForceOrigins", _forceOrigins);
         _compute.SetVectorArray("ForceVectors", _forceVectors);
-        _compute.SetFloat("ForceExponent", _exponent);
         _compute.SetTexture(Kernels.Force, "W_out", VFB.V2);
         _compute.Dispatch(Kernels.Force, ThreadCountX, ThreadCountY, 1);
 
@@ -218,7 +225,7 @@ public class Fluid : MonoBehaviour
 
         // Apply the velocity field to the color buffer.
         _shaderSheet.SetVectorArray("_ForceOrigins", _forceOrigins);
-        _shaderSheet.SetFloat("_ForceExponent", _exponent);
+        _shaderSheet.SetVectorArray("_ForceVectors", _forceVectors);
         _shaderSheet.SetTexture("_VelocityField", VFB.V1);
         Graphics.Blit(_colorRT1, _colorRT2, _shaderSheet, 0);
 

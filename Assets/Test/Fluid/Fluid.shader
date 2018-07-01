@@ -20,11 +20,12 @@ Shader "Hidden/StableFluids"
 
     sampler2D _VelocityField;
 
-    float2 _ForceOrigins[MAX_FORCES];
-    float _ForceExponent;
+    float4 _ForceOrigins[MAX_FORCES];
 
-    half4 frag_advect(v2f_img i) : SV_Target
+    half4 frag_advect(v2f_img input) : SV_Target
     {
+        float2 uv = input.uv;
+
         // Time parameters
         float time = _Time.y;
         float deltaTime = unity_DeltaTime.x;
@@ -34,33 +35,35 @@ Shader "Hidden/StableFluids"
         float2 aspect_inv = float2(_MainTex_TexelSize.x * _MainTex_TexelSize.w, 1);
 
         // Color advection with the velocity field
-        float2 delta = tex2D(_VelocityField, i.uv).xy * aspect_inv * deltaTime;
-        float color = tex2D(_MainTex, i.uv - delta).x;
+        float2 delta = tex2D(_VelocityField, uv).xy * aspect_inv * deltaTime;
+        float color = tex2D(_MainTex, uv - delta).x;
 
-        // Dye (injection color)
-        float3 dye = 1;//saturate(sin(time * float3(2.72, 5.12, 4.98)) + 0.5);
-
+        // Input from force origins
+        float force = 0;
         for (uint idx = 0; idx < MAX_FORCES; idx++)
         {
-            // Blend dye with the color from the buffer.
-            float2 pos = (i.uv - 0.5) * aspect;
-            float amp = exp(-_ForceExponent / 4 * distance(_ForceOrigins[idx], pos));
-            color = max(color, amp * 4);
+            float dist = distance((uv - 0.5) * aspect, _ForceOrigins[idx].xy);
+            force += max(0, _ForceOrigins[idx].z - dist) * 10;
         }
-        color *= 0.995;
+
+        // Change the color based on the input force.
+        float dye = sin(_Time * 49) + 1.01;
+        color = lerp(color, dye, smoothstep(0, 0.5, force));
 
         return color;
     }
 
-    half4 frag_render(v2f_img i) : SV_Target
+    half4 frag_render(v2f_img inpu) : SV_Target
     {
-        half color = tex2D(_MainTex, i.uv).r;
+        half color = tex2D(_MainTex, inpu.uv).r;
 
         // Mixing channels up to get slowly changing false colors
-        half3 rgb = sin(float3(2.43, 3.43, 3.84) * color +
-                        float3(1.12, 1.33, 0.94) * _Time.y) * 0.5 + 0.5;
+        half3 rgb = sin(float3(11.43, 13.43, 13.43) * color +
+                        float3( 1.12,  1.33,  1.13) * _Time.y);
+        rgb = rgb * float3(0.2, 0.5, 0.5) + float3(0.8, 0.5, 0.5);
 
-        rgb *= smoothstep(0.01, 0.1, color);
+        // Near-zero cut off
+        rgb *= smoothstep(0, 0.01, color);
 
         return half4(GammaToLinearSpace(rgb), 1);
     }

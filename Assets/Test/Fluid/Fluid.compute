@@ -15,9 +15,8 @@ float Time;
 float DeltaTime;
 
 // External force
-float2 ForceOrigins[MAX_FORCES];
-float2 ForceVectors[MAX_FORCES];
-float ForceExponent;
+float4 ForceOrigins[MAX_FORCES];
+float4 ForceVectors[MAX_FORCES];
 
 // U (velocity field)
 Texture2D<float2> U_in;
@@ -75,7 +74,11 @@ void Force(uint2 tid : SV_DispatchThreadID)
 
     float2 force = 0;
     for (uint i = 0; i < MAX_FORCES; i++)
-        force += ForceVectors[i] * exp(-ForceExponent * distance(ForceOrigins[i], pos));
+    {
+        float dist = distance(ForceOrigins[i].xy, pos);
+        float amp = max(0, 1 - ForceOrigins[i].z);
+        force += ForceVectors[i].xy * exp(-50 * dist) * 20 * amp;
+    }
 
     W_out[tid] += force;
 }
