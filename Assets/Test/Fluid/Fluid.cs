@@ -94,8 +94,8 @@ public class Fluid : MonoBehaviour
         VFB.P1 = AllocateBuffer(1);
         VFB.P2 = AllocateBuffer(1);
 
-        _colorRT1 = AllocateBuffer(4, Screen.width, Screen.height);
-        _colorRT2 = AllocateBuffer(4, Screen.width, Screen.height);
+        _colorRT1 = AllocateBuffer(1, Screen.width, Screen.height);
+        _colorRT2 = AllocateBuffer(1, Screen.width, Screen.height);
     }
 
     void OnDestroy()

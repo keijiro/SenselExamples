@@ -35,29 +35,32 @@ Shader "Hidden/StableFluids"
 
         // Color advection with the velocity field
         float2 delta = tex2D(_VelocityField, i.uv).xy * aspect_inv * deltaTime;
-        float3 color = tex2D(_MainTex, i.uv - delta).xyz;
+        float color = tex2D(_MainTex, i.uv - delta).x;
 
         // Dye (injection color)
-        float3 dye = saturate(sin(time * float3(2.72, 5.12, 4.98)) + 0.5);
+        float3 dye = 1;//saturate(sin(time * float3(2.72, 5.12, 4.98)) + 0.5);
 
         for (uint idx = 0; idx < MAX_FORCES; idx++)
         {
             // Blend dye with the color from the buffer.
             float2 pos = (i.uv - 0.5) * aspect;
-            float amp = exp(-_ForceExponent * distance(_ForceOrigins[idx], pos));
-            color = lerp(color, dye, saturate(amp * 100));
+            float amp = exp(-_ForceExponent / 4 * distance(_ForceOrigins[idx], pos));
+            color = max(color, amp * 4);
         }
+        color *= 0.995;
 
-        return half4(color, 1);
+        return color;
     }
 
     half4 frag_render(v2f_img i) : SV_Target
     {
-        half3 rgb = tex2D(_MainTex, i.uv).rgb;
+        half color = tex2D(_MainTex, i.uv).r;
 
         // Mixing channels up to get slowly changing false colors
-        //rgb = sin(float3(3.43, 4.43, 3.84) * rgb +
-        //          float3(0.12, 0.23, 0.44) * _Time.y) * 0.5 + 0.5;
+        half3 rgb = sin(float3(2.43, 3.43, 3.84) * color +
+                        float3(1.12, 1.33, 0.94) * _Time.y) * 0.5 + 0.5;
+
+        rgb *= smoothstep(0.01, 0.1, color);
 
         return half4(GammaToLinearSpace(rgb), 1);
     }
