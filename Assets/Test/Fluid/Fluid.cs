@@ -5,8 +5,10 @@ public class Fluid : MonoBehaviour
 {
     #region Editable attributes
 
-    [SerializeField] Vector2Int _dimensions = new Vector2Int(512, 288);
+    [SerializeField] int _resolution = 512;
     [SerializeField] float _viscosity = 0.01f;
+    [SerializeField] float _force = 300;
+    [SerializeField] float _exponent = 200;
 
     #endregion
 
@@ -31,8 +33,11 @@ public class Fluid : MonoBehaviour
         public const int Jacobi2 = 5;
     }
 
-    int ThreadCountX { get { return _dimensions.x / 8; } }
-    int ThreadCountY { get { return _dimensions.y / 8; } }
+    int ThreadCountX { get { return (_resolution                                + 7) / 8; } }
+    int ThreadCountY { get { return (_resolution * Screen.height / Screen.width + 7) / 8; } }
+
+    int ResolutionX { get { return ThreadCountX * 8; } }
+    int ResolutionY { get { return ThreadCountY * 8; } }
 
     // Vector field buffers
     static class VFB
@@ -54,8 +59,8 @@ public class Fluid : MonoBehaviour
         if (componentCount == 1) format = RenderTextureFormat.RHalf;
         if (componentCount == 2) format = RenderTextureFormat.RGHalf;
 
-        if (width  == 0) width  = _dimensions.x;
-        if (height == 0) height = _dimensions.y;
+        if (width  == 0) width  = ResolutionX;
+        if (height == 0) height = ResolutionY;
 
         var rt = new RenderTexture(width, height, 0, format);
         rt.enableRandomWrite = true;
@@ -95,7 +100,7 @@ public class Fluid : MonoBehaviour
 
     void OnValidate()
     {
-        _dimensions = Vector2Int.Max(Vector2Int.one * 8, _dimensions);
+        _resolution = Mathf.Max(_resolution, 8);
     }
 
     void Start()
@@ -129,7 +134,7 @@ public class Fluid : MonoBehaviour
     void Update()
     {
         var dt = Time.deltaTime;
-        var dx = 1.0f / _dimensions.y;
+        var dx = 1.0f / ResolutionY;
 
         // Update contact points.
         for (var i = 0; i < _contacts.Length; i++)
@@ -192,19 +197,20 @@ public class Fluid : MonoBehaviour
         // Add external force
         _compute.SetVectorArray("ForceOrigins", _forceOrigins);
         _compute.SetVectorArray("ForceVectors", _forceVectors);
-        _compute.SetTexture(Kernels.Force, "W_out", VFB.V2);
+        _compute.SetTexture(Kernels.Force, "W_in", VFB.V2);
+        _compute.SetTexture(Kernels.Force, "W_out", VFB.V3);
         _compute.Dispatch(Kernels.Force, ThreadCountX, ThreadCountY, 1);
 
         // Projection setup
-        _compute.SetTexture(Kernels.PSetup, "W_in", VFB.V2);
-        _compute.SetTexture(Kernels.PSetup, "DivW_out", VFB.V3);
+        _compute.SetTexture(Kernels.PSetup, "W_in", VFB.V3);
+        _compute.SetTexture(Kernels.PSetup, "DivW_out", VFB.V2);
         _compute.SetTexture(Kernels.PSetup, "P_out", VFB.P1);
         _compute.Dispatch(Kernels.PSetup, ThreadCountX, ThreadCountY, 1);
 
         // Jacobi iteration
         _compute.SetFloat("Alpha", -dx * dx);
         _compute.SetFloat("Beta", 4);
-        _compute.SetTexture(Kernels.Jacobi1, "B1_in", VFB.V3);
+        _compute.SetTexture(Kernels.Jacobi1, "B1_in", VFB.V2);
 
         for (var i = 0; i < 20; i++)
         {
@@ -218,7 +224,7 @@ public class Fluid : MonoBehaviour
         }
 
         // Projection finish
-        _compute.SetTexture(Kernels.PFinish, "W_in", VFB.V2);
+        _compute.SetTexture(Kernels.PFinish, "W_in", VFB.V3);
         _compute.SetTexture(Kernels.PFinish, "P_in", VFB.P1);
         _compute.SetTexture(Kernels.PFinish, "U_out", VFB.V1);
         _compute.Dispatch(Kernels.PFinish, ThreadCountX, ThreadCountY, 1);
