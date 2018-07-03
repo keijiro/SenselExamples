@@ -80,7 +80,7 @@ void Force(uint2 tid : SV_DispatchThreadID)
         force += ForceVectors[i].xy * exp(-50 * dist) * 20 * amp;
     }
 
-    W_out[tid] += force;
+    W_out[tid] = W_in[tid] + force;
 }
 
 // Setup for Project step (divW calculation)
