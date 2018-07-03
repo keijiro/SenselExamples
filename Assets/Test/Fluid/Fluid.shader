@@ -40,15 +40,15 @@ Shader "Hidden/StableFluids"
 
         // Input from force origins
         float force = 0;
-        for (uint idx = 0; idx < MAX_FORCES; idx++)
+        for (uint i = 0; i < MAX_FORCES; i++)
         {
-            float dist = distance((uv - 0.5) * aspect, _ForceOrigins[idx].xy);
-            force += max(0, _ForceOrigins[idx].z - dist) * 10;
+            float dist = distance((uv - 0.5) * aspect, _ForceOrigins[i].xy);
+            force += max(0, _ForceOrigins[i].z - dist);
         }
 
-        // Change the color based on the input force.
+        // Change the color where the input force is over the threshold.
         float dye = sin(_Time * 49) + 1.01;
-        color = lerp(color, dye, smoothstep(0, 0.5, force));
+        color = lerp(color, dye, smoothstep(0, 0.05, force));
 
         return color;
     }

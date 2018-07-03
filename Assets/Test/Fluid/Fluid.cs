@@ -91,7 +91,7 @@ public class Fluid : MonoBehaviour
 
     Vector4 MakeForceVector(Contact c0, Contact c1)
     {
-        return ConvertCoord(c1) - ConvertCoord(c0);
+        return (ConvertCoord(c1) - ConvertCoord(c0)) * _force;
     }
 
     #endregion
@@ -197,6 +197,7 @@ public class Fluid : MonoBehaviour
         // Add external force
         _compute.SetVectorArray("ForceOrigins", _forceOrigins);
         _compute.SetVectorArray("ForceVectors", _forceVectors);
+        _compute.SetFloat("ForceExponent", _exponent);
         _compute.SetTexture(Kernels.Force, "W_in", VFB.V2);
         _compute.SetTexture(Kernels.Force, "W_out", VFB.V3);
         _compute.Dispatch(Kernels.Force, ThreadCountX, ThreadCountY, 1);
